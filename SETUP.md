@@ -38,18 +38,25 @@ Explorer), with the app from 0b and your access token selected:
 
 1. **`GET me/accounts`** → find the pawfectchaos1 Page in the list.
    - Its `id` field = **`FB_PAGE_ID`**
-   - Its `access_token` field = **`FB_PAGE_TOKEN`**
 2. **`GET {page-id}?fields=instagram_business_account`** → returns
    **`IG_USER_ID`**.
-3. **Long-lived token**: exchange the short-lived Explorer token for a
-   60-day one by visiting (fill in your values, run it yourself, never
+3. **Long-lived USER token**: exchange the short-lived Explorer token for
+   a 60-day one by visiting (fill in your values, run it yourself, never
    paste the `client_secret` anywhere else):
    ```
    https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id={app-id}&client_secret={app-secret}&fb_exchange_token={short-lived-token}
    ```
-   The response's `access_token` = **`IG_ACCESS_TOKEN`** (reuse the same
-   value for `FB_PAGE_TOKEN` too, unless you want a separately-scoped Page
-   token).
+   The response's `access_token` = **`IG_ACCESS_TOKEN`**.
+4. **`FB_PAGE_TOKEN` is NOT the same value as `IG_ACCESS_TOKEN`** — this
+   bit VV's own SETUP.md got wrong and it broke Facebook video posting
+   here (`"(#100) No permission to publish the video"`, even with
+   `publish_video` showing as a granted scope — `debug_token` on the
+   reused value showed `"type": "USER"`, but Page actions need a
+   Page-scoped token). Get the real one by running **`GET me/accounts`
+   again**, this time using the long-lived USER token from step 3 as the
+   Explorer's active token — the Page's `access_token` field in that
+   response is a genuine long-lived Page token (`debug_token` on it
+   should show `"type": "PAGE"`). That's your real `FB_PAGE_TOKEN`.
 
 ### 0d. Add the secrets to this GitHub repo
 `osastdl/pawfectchaos-autopost` → Settings → Secrets and variables →
@@ -93,7 +100,9 @@ workflow**, paste a public video URL + caption. Check the run log for
 success or the exact Meta API error.
 
 ## 4. Ongoing maintenance
-- Long-lived tokens expire after 60 days — repeat step 0c's exchange and
-  update the secret.
+- Long-lived tokens expire after 60 days — repeat step 0c's exchange for
+  `IG_ACCESS_TOKEN`, **then re-derive `FB_PAGE_TOKEN` fresh via
+  `me/accounts`** using that new user token (don't just copy the user
+  token into both secrets — see the note in step 0c.4).
 - To pause posting entirely: Actions → the workflow → "..." → Disable
   workflow.
