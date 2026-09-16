@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "type": "photo",
+    "thumbnail_url": "https://raw.githubusercontent.com/osastdl/pawfectchaos-post-images/master/telegram-20260916-142841.jpg",
+    "caption": "Done with work trying to play some video games",
+    "instagram_id": "18134407456629313",
+    "facebook_id": "1281721155033187_122109670899468327",
+    "posted_at": "2026-09-16T14:29:03Z",
+    "source": "telegram_bot"
+  }
+]
