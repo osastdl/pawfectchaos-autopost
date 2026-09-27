@@ -196,9 +196,18 @@ def handle_message(message):
 
 def poll_once():
     telegram_api.set_my_commands(BOT_COMMANDS)
+    me = telegram_api.get_me()["result"]
     offset = state.get_offset()
     result = telegram_api.get_updates(offset=offset, timeout=5)
-    for update in result.get("result", []):
+    updates = result.get("result", [])
+    # Plain diagnostic, no secrets -- bot identity + queue size are the two
+    # things worth seeing in the Actions log when something seems stuck.
+    print(f"Bot: @{me.get('username')} ({me.get('first_name')}) -- offset={offset}, {len(updates)} update(s) waiting")
+    for update in updates:
+        kinds = [k for k in ("photo", "video", "text") if k in update.get("message", {})]
+        print(f"  update {update['update_id']}: {kinds or list(update.keys())}")
+
+    for update in updates:
         state.set_offset(update["update_id"] + 1)
         if "message" in update:
             handle_message(update["message"])
