@@ -84,14 +84,42 @@ pawfectchaos-autopost/
 
 ## 2. Video must be at a PUBLIC url before posting
 
-Same constraint as VV — Meta fetches the video from a URL, it can't read a
-private repo. Either:
-- push finished dog videos to a **public** repo (mirroring
-  `visual-versatility-post-images`), or
-- host them anywhere else public (a public GitHub release asset, etc.)
+Same constraint as VV — Meta fetches the video (and photo) from a URL, it
+can't read a private repo. **Resolved 2026-09-27**: rather than a separate
+sibling images repo needing its own push token (VV's pattern), bot
+uploads publish straight into `bot-uploads/` in THIS repo (already
+public) via the workflow's own default `GITHUB_TOKEN` — no extra secret
+needed. See `shared/github_publish.py`.
 
-Not built yet — say the word once you're ready and this gets the same
-treatment as VV's image repo.
+## 2b. The Telegram bot — how it actually works (built 2026-09-27)
+
+`bot/main.py`, polled every 5 min by `.github/workflows/poll.yml`:
+
+1. Send the bot a **photo or video** (as an attachment). It downloads it
+   from Telegram, publishes it to `bot-uploads/` in this repo, drafts a
+   caption (`shared/caption_generator.py`), and replies with the draft +
+   a Post/Cancel keyboard.
+2. Reply **"post"** or **"cancel"**. Confirming calls
+   `destinations/pawfectchaos_fb_ig.py`, which posts to both Facebook and
+   Instagram using the same 4 secrets `autopost.py` and
+   `manual_post_video.py` already use (`IG_ACCESS_TOKEN`, `IG_USER_ID`,
+   `FB_PAGE_ID`, `FB_PAGE_TOKEN`) — nothing new to configure.
+3. For video, Instagram Reels processing is asynchronous — the bot polls
+   for up to ~10 min after you confirm before it can actually publish, so
+   the "posted" reply can take a few minutes to arrive. This reuses
+   `manual_post_video.py`'s exact polling logic (that script's IG/FB
+   posting code, unchanged); the bot just calls it from Telegram instead
+   of requiring someone to manually run the Actions workflow with a
+   pasted-in URL.
+4. State (`content/offset.json`, `content/pending_posts.json`) is
+   committed back to the repo by the workflow after every run — same
+   pattern as `osastdl/atn-bot`'s bot, which this one's code structure is
+   copied from (that one only supports photos; this one also does video).
+
+**Before this date**, sending a video to any bot for this account did
+nothing except (on atn-bot, a different bot entirely) reply "video
+posting isn't wired up yet." No video pipeline existed anywhere for
+Pawfect Chaos before 2026-09-27.
 
 ## 3. Test it
 

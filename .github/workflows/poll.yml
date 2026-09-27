@@ -1,0 +1,60 @@
+name: Poll Telegram for Pawfect Chaos bot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+# Without this, the default GITHUB_TOKEN is read-only and both the media
+# upload (shared/github_publish.py, into this same repo) and the "Commit
+# updated bot state" step below fail -- confirmed as the exact failure
+# mode atn-bot hit in production before this permission was added there
+# (2026-08-18, every scheduled run silently re-processing old messages).
+permissions:
+  contents: write
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pawfectchaos-bot-poll
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Poll for updates and process
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+        run: python -m bot.main
+
+      - name: Commit updated bot state
+        if: always()
+        run: |
+          git config user.name "pawfectchaos-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add content/offset.json content/pending_posts.json
+          git diff --staged --quiet && exit 0
+          git commit -m "Bot state update [skip ci]"
+          # A video confirmation can take several minutes (Instagram Reels
+          # processing) -- another scheduled run can easily start and
+          # finish in that window, so retry against whatever it pushed
+          # rather than losing this run's state. Same pattern as atn-bot's
+          # poll.yml.
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            echo "Push rejected, rebasing onto origin/master and retrying (attempt $i)..."
+            git pull --rebase origin master
+          done
+          echo "::error::Failed to push bot state after 5 attempts"
+          exit 1
