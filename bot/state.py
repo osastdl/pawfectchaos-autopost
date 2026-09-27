@@ -7,11 +7,13 @@ changes these functions write back to disk.
 
 import json
 import os
+import time
 import uuid
 
 CONTENT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "content")
 OFFSET_PATH = os.path.join(CONTENT_DIR, "offset.json")
 PENDING_PATH = os.path.join(CONTENT_DIR, "pending_posts.json")
+POSTED_LOG_PATH = os.path.join(CONTENT_DIR, "posted_log.json")
 
 
 def get_offset():
@@ -67,3 +69,29 @@ def find_oldest_pending(chat_id):
         if entry.get("chat_id") == chat_id:
             return short_id, entry
     return None, None
+
+
+def log_posted(entry, result):
+    """Appends a real, successful post to content/posted_log.json -- same
+    file/shape scripts/manual_post_video.py and scripts/autopost.py already
+    write to, so there's exactly one place to look for "what has actually
+    gone out the door" regardless of which of the three posting paths sent
+    it. Without this, a successful post would only ever be visible as a
+    Telegram confirmation message -- easy to lose track of."""
+    entries = []
+    if os.path.exists(POSTED_LOG_PATH):
+        with open(POSTED_LOG_PATH) as f:
+            entries = json.load(f)
+    entries.append(
+        {
+            "type": entry["media_type"],
+            "thumbnail_url": entry["media_url"],
+            "caption": entry["caption"],
+            "instagram_id": result["instagram"]["id"],
+            "facebook_id": result["facebook"]["id"],
+            "posted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "source": "telegram_bot",
+        }
+    )
+    with open(POSTED_LOG_PATH, "w") as f:
+        json.dump(entries, f, indent=2)

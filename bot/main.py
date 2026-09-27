@@ -152,8 +152,12 @@ def handle_reply_confirmation(message):
             "a few minutes, hang tight.",
         )
 
+    print(f"Posting {entry['media_type']} ({entry['media_url']}) for chat {chat_id}...")
     try:
         result = pawfectchaos_fb_ig.post(entry["media_url"], entry["caption"], entry["media_type"])
+        print(f"  Facebook: {result['facebook']}")
+        print(f"  Instagram: {result['instagram']}")
+        state.log_posted(entry, result)
         fb_url = html.escape(result["facebook"]["url"])
         ig_url = html.escape(result["instagram"]["url"])
         send(
@@ -168,6 +172,7 @@ def handle_reply_confirmation(message):
             reply_markup=telegram_api.PERSISTENT_KEYBOARD,
         )
     except Exception as e:
+        print(f"  FAILED: {e}")
         send(
             chat_id,
             **{entry["media_type"]: entry["file_id"]},
